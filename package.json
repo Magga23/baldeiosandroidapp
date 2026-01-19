@@ -45,5 +45,12 @@
       "router": {},
       "backendUrl": "https://hhsmqz5etrmb863fbnre2k2z8jy5w2ap.app.specular.dev"
     }
+  },
+  "dependencies": {
+    "expo": "~54.0.31",
+    "expo-font": "~14.0.10",
+    "expo-router": "~6.0.21",
+    "expo-secure-store": "~15.0.8",
+    "expo-web-browser": "~15.0.10"
   }
 }
