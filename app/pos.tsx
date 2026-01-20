@@ -24,7 +24,7 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 interface Product {
   id: string;
@@ -125,8 +125,7 @@ export default function POSScreen() {
   
   // QR Scanner state
   const [showQRScanner, setShowQRScanner] = useState(false);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [scanned, setScanned] = useState(false);
+   const [scanned, setScanned] = useState(false);
   
   // Project info
   const [project, setProject] = useState<Project | null>(null);
@@ -549,22 +548,20 @@ export default function POSScreen() {
   };
 
   // QR Scanner Functions
+  const [permission, requestPermission] = useCameraPermissions();
+
   const openQRScanner = async () => {
-    console.log('═══════════════════════════════════════════════════════');
-    console.log('📷 QR SCANNER - Opening scanner');
-    console.log('═══════════════════════════════════════════════════════');
-    
-    const { status } = await BarCodeScanner.requestPermissionsAsync();
-    console.log('POSScreen: Camera permission status:', status);
-    setHasPermission(status === 'granted');
-    
-    if (status === 'granted') {
-      setShowQRScanner(true);
-      setScanned(false);
-    } else {
-      Alert.alert('Permission Required', 'Camera permission is required to scan QR codes');
+    if (!permission?.granted) {
+      const { granted } = await requestPermission();
+      if (!granted) {
+        Alert.alert('Permission Required', 'Camera permission is required');
+        return;
+      }
     }
+    setShowQRScanner(true);
+    setScanned(false);
   };
+  
 
   const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
     if (scanned) return;
@@ -1056,39 +1053,43 @@ export default function POSScreen() {
         onRequestClose={() => setShowQRScanner(false)}
       >
         <View style={styles.qrScannerContainer}>
-          {hasPermission === null ? (
-            <View style={styles.qrPermissionContainer}>
-              <ActivityIndicator size="large" color={themeColors.primary} />
-              <Text style={[styles.qrPermissionText, { color: themeColors.text }]}>
-                Requesting camera permission...
-              </Text>
-            </View>
-          ) : hasPermission === false ? (
-            <View style={styles.qrPermissionContainer}>
-              <IconSymbol
-                ios_icon_name="camera.fill"
-                android_material_icon_name="camera"
-                size={64}
-                color="#EF4444"
-              />
-              <Text style={[styles.qrPermissionText, { color: themeColors.text }]}>
-                Camera permission denied
-              </Text>
-              <TouchableOpacity
-                style={[styles.qrCloseButton, { backgroundColor: themeColors.primary }]}
-                onPress={() => setShowQRScanner(false)}
-              >
-                <Text style={styles.qrCloseButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              <BarCodeScanner
-                onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-                style={StyleSheet.absoluteFillObject}
-              />
-              
-              {/* Scanner Overlay */}
+        {!permission ? (
+  <View style={styles.qrPermissionContainer}>
+    <ActivityIndicator size="large" color={themeColors.primary} />
+    <Text style={[styles.qrPermissionText, { color: themeColors.text }]}>
+      Requesting camera permission...
+    </Text>
+  </View>
+) : !permission.granted ? (
+  <View style={styles.qrPermissionContainer}>
+    <IconSymbol
+      ios_icon_name="camera.fill"
+      android_material_icon_name="camera"
+      size={64}
+      color="#EF4444"
+    />
+    <Text style={[styles.qrPermissionText, { color: themeColors.text }]}>
+      Camera permission denied
+    </Text>
+    <TouchableOpacity
+      style={[styles.qrCloseButton, { backgroundColor: themeColors.primary }]}
+      onPress={() => setShowQRScanner(false)}
+    >
+      <Text style={styles.qrCloseButtonText}>Close</Text>
+    </TouchableOpacity>
+  </View>
+) : (
+  <>
+    <CameraView
+      style={StyleSheet.absoluteFillObject}
+      facing="back"
+      barcodeScannerSettings={{
+        barcodeTypes: ['qr', 'ean13', 'ean8', 'code128', 'code39'],
+      }}
+      onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+    /> 
+)}
+         {/* Scanner Overlay */}
               <View style={styles.qrOverlay}>
                 <View style={styles.qrHeader}>
                   <Text style={styles.qrHeaderTitle}>Scan Product QR Code</Text>
